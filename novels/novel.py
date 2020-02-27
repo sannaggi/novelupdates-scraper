@@ -1,5 +1,8 @@
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup as soup
+from utilities import strings
+from lxml import etree
+from lxml.html import fromstring, HTMLParser
 
 # https://www.novelupdates.com/series/hackai-buster/
 
@@ -25,7 +28,14 @@ def fetchNovel(name):
             "authors": fetchAuthors(page),
             "artists": fetchArtists(page),
             "year": fetchYear(page),
-            "status": fetchStatus(page)
+            "status": fetchStatus(page),
+            "licensed": fetchLicensed(page),
+            "completelyTranslated": fetchCompletelyTranslated(page),
+            "publisher": fetchPublisher(page),
+            "englishPublisher": fetchEnglishPublisher(page),
+            "releaseFrequency": fetchReleaseFrequency(page),
+            "activityStats": fetchActivityStats(page)
+            # "asd": fetchAssociatedName(page)
         }
 
         return novel_data
@@ -34,7 +44,7 @@ def fetchNovel(name):
         return page.find("div", {"class": "seriesimg"}).img["src"]
     
     def fetchDescription(page):
-        return page.find("div", {"id": "editdescription"}).p.text
+        return strings.decodeQuotes(page.find("div", {"id": "editdescription"}).p.text)
 
     def fetchType(page):
         return page.find("a", {"class", "genre type"}).text
@@ -64,7 +74,7 @@ def fetchNovel(name):
 
         for vote_html in votes_html:
             texts = vote_html.text.split()
-            votes[score] = texts[1][1:]
+            votes[score] = int(texts[1][1:])
             score -= 1
         
         return votes
@@ -95,5 +105,40 @@ def fetchNovel(name):
     
     def fetchStatus(page):
         return page.find("div", {"id": "editstatus"}).text.strip()
+
+    def fetchLicensed(page):
+        return page.find("div", {"id": "showlicensed"}).text.strip()
+    
+    def fetchCompletelyTranslated(page):
+        return page.find("div", {"id": "showtranslated"}).text.strip()
+    
+    def fetchPublisher(page):
+        return page.find("div", {"id": "showopublisher"}).find("a").text.strip()
+
+    def fetchEnglishPublisher(page):
+        return page.find("div", {"id": "showepublisher"}).find("a").text.strip()
+
+    def fetchReleaseFrequency(page):
+        page_str = str(page)
+        start_index = page_str.find("Release Frequency")
+        words = page_str[start_index:start_index+100].split()
+        return float(words[3])
+
+    def fetchActivityStats(page):
+        time = ["week", "month", "allTime"]
+        stats = {}
+
+        activity_ranks_html = page.find_all("span", {"class": "userrate rank"}) 
+
+        for i in range(3):
+            stats[time[i]] = int(activity_ranks_html[i].text[1:])
+
+        return stats
+
+    # def fetchAssociatedName(page):
+    #     return page.find("div", {"id": "editassociated"}).text.encode("shift-jis").encode("utf-8")
+    #     tree = fromstring(name_html, parser=HTMLParser(encoding='shift-jis'))
+    #     return str(etree.tostring(tree, encoding='shift-jis', method="html"))
+        # return name_html
 
     return response(name)
